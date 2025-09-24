@@ -36,23 +36,20 @@
           mark: { type: "geoshape", fill: "#fafafa", stroke: "#bdbdbd" } },
 
         // Points layer (edit points.csv for your real data)
-        { data: { url: "points.csv" },
-          mark: { type: "circle", opacity: 0.9 },
-          encoding: {
-            longitude: { field: "lon", type: "quantitative" },
-            latitude:  { field: "lat", type: "quantitative" },
-            color:     { field: "value", type: "quantitative", title: "Value",
-                         scale: { scheme: "blues" } },
-            size:      { field: "value", type: "quantitative",
-                         scale: { range: [40, 800] } },
-            tooltip:   [
-              { field: "name",  title: "Place" },
-              { field: "value", title: "Value" },
-              { field: "lon",   title: "Lon" },
-              { field: "lat",   title: "Lat" }
-            ]
-          } }
-      ],
+        {
+  data: { url: "points.csv" },
+  mark: { type: "circle", opacity: 0.9 },
+  encoding: {
+    longitude: { field: "lon", type: "quantitative" },
+    latitude:  { field: "lat", type: "quantitative" },
+    color:     { field: "value", type: "quantitative", title: "Public transport (%)" },
+    size:      { field: "value", type: "quantitative" },
+    tooltip:   [
+      { field: "name",  title: "Region" },
+      { field: "value", title: "Public transport (%)" }
+    ]
+  }
+},
 
       config: {
         view: { stroke: null },
