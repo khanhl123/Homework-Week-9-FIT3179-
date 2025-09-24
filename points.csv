@@ -1,23 +1,4 @@
-
 name,lon,lat,metric,value
-City of Melbourne,144.9631,-37.8136,Public transport,33.3
-City of Sydney,151.2093,-33.8688,Public transport,25.6
-Australia,134.0,-25.0,Public transport,6.7
-Greater Melbourne,144.9631,-37.8136,Public transport,8.8
-Victoria,144.9631,-36.5,Public transport,6.8
-M9 Inner Melbourne region,144.96,-37.81,Public transport,21.9
-City of Melbourne,144.9631,-37.8136,Car,31.7
-City of Sydney,151.2093,-33.8688,Car,38.2
-Australia,134.0,-25.0,Car,84.1
-Greater Melbourne,144.9631,-37.8136,Car,82.8
-Victoria,144.9631,-36.5,Car,84.6
-M9 Inner Melbourne region,144.96,-37.81,Car,54.2
-City of Melbourne,144.9631,-37.8136,Active,28.9
-City of Sydney,151.2093,-33.8688,Active,29.4
-Australia,134.0,-25.0,Active,4.8
-Greater Melbourne,144.9631,-37.8136,Active,4.5
-Victoria,144.9631,-36.5,Active,4.7
-M9 Inner Melbourne region,144.96,-37.81,Active,18.8
 Footscray,144.899,-37.8,Active,4.5
 Footscray,144.899,-37.8,Car,82.8
 Footscray,144.899,-37.8,Public transport,8.8
