@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Week 9 — Points over Australia</title>
+  <title>Week 9 — Travel Modes (toggle)</title>
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
@@ -18,8 +18,14 @@
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
       width: 960, height: 520,
       background: "#e9f4ff",
-      title: { text: "Sample points", anchor: "start" },
+      title: { text: "Share of trips by mode — toggle", anchor: "start" },
       projection: { type: "mercator", center: [134, -25], scale: 900 },
+
+      params: [{
+        name: "metricSel",
+        value: "Public transport",
+        bind: { input: "select", options: ["Public transport", "Car", "Active"], name: "Metric: " }
+      }],
 
       layer: [
         { data: { graticule: { step: [20, 20] } },
@@ -32,19 +38,26 @@
           mark: { type: "geoshape", fill: "#fafafa", stroke: "#bdbdbd" } },
 
         {
-          data: { url: "points.csv", format: {type: "csv"} },
+          data: { url: "combined_points_long_expanded.csv", format: {type: "csv"} },
           transform: [
-            {"calculate": "toNumber(datum.lon)", "as": "lonN"},
-            {"calculate": "toNumber(datum.lat)", "as": "latN"},
-            {"calculate": "toNumber(datum.value)", "as": "valN"}
+            {"calculate": "toNumber(datum.lon)",   "as": "lonN"},
+            {"calculate": "toNumber(datum.lat)",   "as": "latN"},
+            {"calculate": "toNumber(datum.value)", "as": "valN"},
+            { "filter": { "field": "metric", "equal": {"expr": "metricSel"} } }
           ],
           mark: { type: "circle", opacity: 0.9 },
           encoding: {
             longitude: { field: "lonN", type: "quantitative" },
             latitude:  { field: "latN", type: "quantitative" },
-            color:     { field: "valN", type: "quantitative", title: "Value" },
-            size:      { field: "valN", type: "quantitative", scale: { range: [40, 800] } },
-            tooltip:   [{ field: "name", title: "Place" }, { field: "valN", title: "Value" }]
+            color:     { field: "valN", type: "quantitative",
+                         title: { expr: "metricSel + ' (%)'" } },
+            size:      { field: "valN", type: "quantitative",
+                         scale: { range: [40, 800] } },
+            tooltip: [
+              { field: "name",   title: "Suburb/Region" },
+              { field: "metric", title: "Metric" },
+              { field: "valN",   title: "Value (%)", format: ".1f" }
+            ]
           }
         }
       ],
