@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Week 9 — Sample Points over Australia</title>
+  <title>Week 9 — Travel Modes (toggle)</title>
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
@@ -17,37 +17,57 @@
   <script>
     const spec = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
-      width: 960, height: 520,
+      width: 960,
+      height: 520,
       background: "#e9f4ff",
-      title: {text: "Sample Points over Australia", anchor: "start"},
+      title: { text: "Share of trips by mode — toggle", anchor: "start" },
+
       // Zoom to Australia
       projection: { type: "mercator", center: [134, -25], scale: 900 },
 
+      // Dropdown to choose the metric
+      params: [{
+        name: "metricSel",
+        value: "Public transport",
+        bind: { input: "select", options: ["Public transport", "Car", "Active"], name: "Metric: " }
+      }],
+
       layer: [
         // Graticule
-        { data: { graticule: { step: [20, 20] } },
-          mark: { type: "geoshape", fill: null, stroke: "#c8d0d8" } },
+        {
+          data: { graticule: { step: [20, 20] } },
+          mark: { type: "geoshape", fill: null, stroke: "#c8d0d8" }
+        },
 
-        // Countries basemap (your TopoJSON)
-        { data: {
+        // Countries basemap (TopoJSON)
+        {
+          data: {
             url: "ne_110m_admin_0_countries.topojson",
             format: { type: "topojson", feature: "ne_110m_admin_0_countries" }
           },
-          mark: { type: "geoshape", fill: "#fafafa", stroke: "#bdbdbd" } },
+          mark: { type: "geoshape", fill: "#fafafa", stroke: "#bdbdbd" }
+        },
 
-        // Points layer (edit points.csv for your real data)
-        { 
-  data: { url: "combined_points_long_expanded.csv" },
-  transform: [{ filter: "datum.metric == metricSel" }],
-  mark: { type: "circle", opacity: 0.9 },
-  encoding: {
-    longitude: { field: "lon", type: "quantitative" },
-    latitude:  { field: "lat", type: "quantitative" },
-    color:     { field: "value", type: "quantitative", title: {expr: "metricSel + ' (%)'"} },
-    size:      { field: "value", type: "quantitative" },
-    tooltip:   [{ field: "name", title: "Suburb/Region" }, { field: "value", title: "Value (%)" }]
-  }
-},
+        // Points layer (your expanded suburbs + regions file)
+        {
+          data: { url: "combined_points_long_expanded.csv" },
+          transform: [{ filter: "datum.metric == metricSel" }],
+          mark: { type: "circle", opacity: 0.9 },
+          encoding: {
+            longitude: { field: "lon", type: "quantitative" },
+            latitude:  { field: "lat", type: "quantitative" },
+            color:     { field: "value", type: "quantitative",
+                         title: { expr: "metricSel + ' (%)'" } },
+            size:      { field: "value", type: "quantitative",
+                         scale: { range: [40, 800] } },
+            tooltip:   [
+              { field: "name",  title: "Suburb/Region" },
+              { field: "metric", title: "Metric" },
+              { field: "value", title: "Value (%)", format: ".1f" }
+            ]
+          }
+        }
+      ],
 
       config: {
         view: { stroke: null },
