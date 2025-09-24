@@ -15,7 +15,7 @@
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
       width: 960, height: 520,
       background: "#e9f4ff",
-      projection: { type: "equalEarth" },
+      projection: { type: "mercator", center: [134, -25], scale: 800 },
       layer: [
         { data: { graticule: { step: [30,30] } },
           mark: { type:"geoshape", fill:null, stroke:"#cccccc" } },
