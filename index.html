@@ -2,39 +2,65 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>My Week 9 Map</title>
+  <title>Week 9 — Sample Points over Australia</title>
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
-  <style>body{margin:0;font-family:system-ui,Arial;background:#f7fbff} #vis{max-width:1000px;margin:24px auto}</style>
+  <style>
+    body { margin: 0; font-family: system-ui, Arial; background:#f7fbff; }
+    #vis { max-width: 1000px; margin: 24px auto; }
+  </style>
 </head>
 <body>
   <div id="vis"></div>
+
   <script>
     const spec = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
       width: 960, height: 520,
       background: "#e9f4ff",
-      projection: { type: "mercator", center: [134, -25], scale: 800 },
+      title: {text: "Sample Points over Australia", anchor: "start"},
+      // Zoom to Australia
+      projection: { type: "mercator", center: [134, -25], scale: 900 },
+
       layer: [
-        { data: { graticule: { step: [30,30] } },
-          mark: { type:"geoshape", fill:null, stroke:"#cccccc" } },
-        { data: { url: "ne_110m_admin_0_countries.topojson",
-                  format: { type:"topojson", feature:"ne_110m_admin_0_countries" } },
-          mark: { type:"geoshape", fill:"#fafafa", stroke:"#bdbdbd" } },
+        // Graticule
+        { data: { graticule: { step: [20, 20] } },
+          mark: { type: "geoshape", fill: null, stroke: "#c8d0d8" } },
+
+        // Countries basemap (your TopoJSON)
+        { data: {
+            url: "ne_110m_admin_0_countries.topojson",
+            format: { type: "topojson", feature: "ne_110m_admin_0_countries" }
+          },
+          mark: { type: "geoshape", fill: "#fafafa", stroke: "#bdbdbd" } },
+
+        // Points layer (edit points.csv for your real data)
         { data: { url: "points.csv" },
-          mark: { type:"circle", opacity:0.85 },
+          mark: { type: "circle", opacity: 0.9 },
           encoding: {
-            longitude: { field:"lon", type:"quantitative" },
-            latitude:  { field:"lat", type:"quantitative" },
-            color:     { field:"value", type:"quantitative", title:"Value" },
-            size:      { field:"value", type:"quantitative" },
-            tooltip:   [{field:"name"},{field:"value"}]
+            longitude: { field: "lon", type: "quantitative" },
+            latitude:  { field: "lat", type: "quantitative" },
+            color:     { field: "value", type: "quantitative", title: "Value",
+                         scale: { scheme: "blues" } },
+            size:      { field: "value", type: "quantitative",
+                         scale: { range: [40, 800] } },
+            tooltip:   [
+              { field: "name",  title: "Place" },
+              { field: "value", title: "Value" },
+              { field: "lon",   title: "Lon" },
+              { field: "lat",   title: "Lat" }
+            ]
           } }
       ],
-      config: { legend: { titleFontSize:12, labelFontSize:11 } }
+
+      config: {
+        view: { stroke: null },
+        legend: { titleFontSize: 12, labelFontSize: 11 }
+      }
     };
-    vegaEmbed("#vis", spec, { actions:false });
+
+    vegaEmbed("#vis", spec, { actions: false });
   </script>
 </body>
 </html>
