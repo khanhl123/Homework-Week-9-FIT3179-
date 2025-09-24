@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>My Week 9 Map</title>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <style>body{margin:0;font-family:system-ui,Arial} #vis{max-width:1000px;margin:24px auto}</style>
+</head>
+<body>
+  <div id="vis"></div>
+  <script>
+    const spec = {
+      $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+      width: 960, height: 520,
+      background: "#e9f4ff",                       // ocean background (world map)
+      projection: {type: "equalEarth"},            // pick a sensible world projection
+      layer: [
+        { data: {graticule: {step: [30,30]}},      // required graticule (e.g., 30°)
+          mark: {type:"geoshape", fill:null, stroke:"#cccccc"} },
+        { data: { url: "world-110m.json",          // put a TopoJSON here
+                  format: {type:"topojson", feature:"countries"} },
+          mark: {type:"geoshape", fill:"#fafafa", stroke:"#bdbdbd"} }
+      ],
+      config: { legend: {titleFontSize:12, labelFontSize:11} }
+    };
+    vegaEmbed("#vis", spec, {actions:false});
+  </script>
+</body>
+</html>
