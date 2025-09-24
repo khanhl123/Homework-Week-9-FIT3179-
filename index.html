@@ -6,40 +6,35 @@
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
-  <style>
-    body { margin: 0; font-family: system-ui, Arial; background:#f7fbff; }
-    #vis { max-width: 1000px; margin: 24px auto; }
-  </style>
+  <style>body{margin:0;font-family:system-ui,Arial;background:#f7fbff} #vis{max-width:1000px;margin:24px auto}</style>
 </head>
 <body>
   <div id="vis"></div>
   <script>
     const spec = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
-      width: 960,
-      height: 520,
-      background: "#e9f4ff",                    // ocean background
-      projection: { type: "equalEarth" },       // sensible world projection
+      width: 960, height: 520,
+      background: "#e9f4ff",
+      projection: { type: "equalEarth" },
       layer: [
-        // Graticule
-        {
-          data: { graticule: { step: [30, 30] } },
-          mark: { type: "geoshape", fill: null, stroke: "#cccccc" }
-        },
-        // Countries (TopoJSON)
-        {
-          data: {
-            url: "ne_110m_admin_0_countries.topojson",   // filename in your repo
-            format: { type: "topojson", feature: "ne_110m_admin_0_countries" } // object name (no .topojson)
-          },
-          mark: { type: "geoshape", fill: "#fafafa", stroke: "#bdbdbd" }
-        }
-        // To add points later, insert another object here using data:{url:"points.csv"}...
+        { data: { graticule: { step: [30,30] } },
+          mark: { type:"geoshape", fill:null, stroke:"#cccccc" } },
+        { data: { url: "ne_110m_admin_0_countries.topojson",
+                  format: { type:"topojson", feature:"ne_110m_admin_0_countries" } },
+          mark: { type:"geoshape", fill:"#fafafa", stroke:"#bdbdbd" } },
+        { data: { url: "points.csv" },
+          mark: { type:"circle", opacity:0.85 },
+          encoding: {
+            longitude: { field:"lon", type:"quantitative" },
+            latitude:  { field:"lat", type:"quantitative" },
+            color:     { field:"value", type:"quantitative", title:"Value" },
+            size:      { field:"value", type:"quantitative" },
+            tooltip:   [{field:"name"},{field:"value"}]
+          } }
       ],
-      config: { legend: { titleFontSize: 12, labelFontSize: 11 } }
+      config: { legend: { titleFontSize:12, labelFontSize:11 } }
     };
-
-    vegaEmbed("#vis", spec, { actions: false });
+    vegaEmbed("#vis", spec, { actions:false });
   </script>
 </body>
 </html>
