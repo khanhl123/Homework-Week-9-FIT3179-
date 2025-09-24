@@ -36,18 +36,16 @@
           mark: { type: "geoshape", fill: "#fafafa", stroke: "#bdbdbd" } },
 
         // Points layer (edit points.csv for your real data)
-        {
-  data: { url: "points.csv" },
+        { 
+  data: { url: "combined_points_long_expanded.csv" },
+  transform: [{ filter: "datum.metric == metricSel" }],
   mark: { type: "circle", opacity: 0.9 },
   encoding: {
     longitude: { field: "lon", type: "quantitative" },
     latitude:  { field: "lat", type: "quantitative" },
-    color:     { field: "value", type: "quantitative", title: "Public transport (%)" },
+    color:     { field: "value", type: "quantitative", title: {expr: "metricSel + ' (%)'"} },
     size:      { field: "value", type: "quantitative" },
-    tooltip:   [
-      { field: "name",  title: "Region" },
-      { field: "value", title: "Public transport (%)" }
-    ]
+    tooltip:   [{ field: "name", title: "Suburb/Region" }, { field: "value", title: "Value (%)" }]
   }
 },
 
