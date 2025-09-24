@@ -50,7 +50,7 @@
 
         // Points layer (your expanded suburbs + regions file)
         {
-          data: { url: "combined_points_long_expanded.csv" },
+          data: { url: "points.csv" },
           transform: [{ filter: "datum.metric == metricSel" }],
           mark: { type: "circle", opacity: 0.9 },
           encoding: {
