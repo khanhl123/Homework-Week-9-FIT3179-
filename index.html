@@ -13,19 +13,15 @@
 </head>
 <body>
   <div id="vis"></div>
-
   <script>
     const spec = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
-      width: 960,
-      height: 520,
+      width: 960, height: 520,
       background: "#e9f4ff",
       title: { text: "Share of trips by mode — toggle", anchor: "start" },
 
-      // Zoom to Australia
       projection: { type: "mercator", center: [134, -25], scale: 900 },
 
-      // Dropdown to choose the metric
       params: [{
         name: "metricSel",
         value: "Public transport",
@@ -33,46 +29,41 @@
       }],
 
       layer: [
-        // Graticule
-        {
-          data: { graticule: { step: [20, 20] } },
-          mark: { type: "geoshape", fill: null, stroke: "#c8d0d8" }
-        },
+        { data: { graticule: { step: [20, 20] } },
+          mark: { type: "geoshape", fill: null, stroke: "#c8d0d8" } },
 
-        // Countries basemap (TopoJSON)
-        {
-          data: {
+        { data: {
             url: "ne_110m_admin_0_countries.topojson",
             format: { type: "topojson", feature: "ne_110m_admin_0_countries" }
           },
-          mark: { type: "geoshape", fill: "#fafafa", stroke: "#bdbdbd" }
-        },
+          mark: { type: "geoshape", fill: "#fafafa", stroke: "#bdbdbd" } },
 
-        // Points layer (your expanded suburbs + regions file)
         {
-          data: { url: "points.csv" },
-          transform: [{ filter: "datum.metric == metricSel" }],
+          data: { url: "points.csv", format: {type: "csv"} },
+          transform: [
+            {"calculate": "toNumber(datum.lon)",   "as": "lonN"},
+            {"calculate": "toNumber(datum.lat)",   "as": "latN"},
+            {"calculate": "toNumber(datum.value)", "as": "valN"},
+            { "filter": { "field": "metric", "equal": {"expr": "metricSel"} } }
+          ],
           mark: { type: "circle", opacity: 0.9 },
           encoding: {
-            longitude: { field: "lon", type: "quantitative" },
-            latitude:  { field: "lat", type: "quantitative" },
-            color:     { field: "value", type: "quantitative",
+            longitude: { field: "lonN", type: "quantitative" },
+            latitude:  { field: "latN", type: "quantitative" },
+            color:     { field: "valN", type: "quantitative",
                          title: { expr: "metricSel + ' (%)'" } },
-            size:      { field: "value", type: "quantitative",
+            size:      { field: "valN", type: "quantitative",
                          scale: { range: [40, 800] } },
-            tooltip:   [
-              { field: "name",  title: "Suburb/Region" },
+            tooltip: [
+              { field: "name",   title: "Suburb/Region" },
               { field: "metric", title: "Metric" },
-              { field: "value", title: "Value (%)", format: ".1f" }
+              { field: "valN",   title: "Value (%)", format: ".1f" }
             ]
           }
         }
       ],
 
-      config: {
-        view: { stroke: null },
-        legend: { titleFontSize: 12, labelFontSize: 11 }
-      }
+      config: { view: { stroke: null }, legend: { titleFontSize: 12, labelFontSize: 11 } }
     };
 
     vegaEmbed("#vis", spec, { actions: false });
