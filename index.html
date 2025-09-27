@@ -24,11 +24,12 @@
   <div id="vis" aria-label="Map of Melbourne with heatmap and proportional circles"></div>
 
   <script>
-    // === knobs ===
-    const metricName = "Metric";   // e.g., "Average daily riders"
-    const unit       = "units";    // e.g., "people/day"
-    const unitsLabel = `${metricName} (${unit})`;
+    // ---- customize these two lines ----
+    const metricName = "Metric";          // e.g., "Average daily riders"
+    const unit       = "units";           // e.g., "people/day"
+    // -----------------------------------
 
+    const unitsLabel = `${metricName} (${unit})`;
     const dataUrl    = "combined_points_long_expanded.csv";
     const lonField   = "lon";
     const latField   = "lat";
@@ -53,7 +54,7 @@
         { data: { graticule: { step: [0.2, 0.2] } },
           mark: { type: "geoshape", fill: null, stroke: "#c8d0d8", strokeWidth: 0.6 } },
 
-        // HEATMAP (2D binned lon/lat → sum of metric)
+        // HEATMAP
         {
           data: { url: dataUrl, format: { type: "csv" } },
           transform: [
@@ -82,15 +83,15 @@
                 orient: "right",
                 gradientLength: 140,
                 direction: "vertical",
-                // append unit to every tick label on the gradient
-                labelExpr: "datum.label + ' ' + '" + unit + "'"
+                // show unit after every tick on the gradient
+                labelExpr: `format(datum.value, '~s') + ' ${unit}'`
               }
             },
-            tooltip: [{ field: "heat", type: "quantitative", title: `Sum ${unitsLabel}`, format: "~s" }]
+            tooltip: [{ field: "heat", title: `Sum ${unitsLabel}`, format: "~s" }]
           }
         },
 
-        // POINTS — proportional symbols (size legend with unit suffix)
+        // POINTS (size legend with unit suffix)
         {
           data: { url: dataUrl, format: { type: "csv" } },
           transform: [
@@ -116,8 +117,8 @@
                 symbolFillColor: "#ffffff",
                 symbolStrokeColor: "#2f6fab",
                 symbolStrokeWidth: 1.2,
-                // append unit to each tick in the size legend
-                labelExpr: "datum.label + ' ' + '" + unit + "'"
+                // show unit after each numeric tick
+                labelExpr: `format(datum.value, '~s') + ' ${unit}'`
               }
             },
             order: { field: "valN", sort: "descending" },
