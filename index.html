@@ -1,63 +1,125 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Week 9 — Melbourne focus</title>
+  <title>Proportional Symbol Map — Melbourne CBD (Your Topic, 2024)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
   <style>
-    body { margin: 0; font-family: system-ui, Arial; background:#f7fbff; }
-    #vis { max-width: 1000px; margin: 24px auto; }
+    :root { --bg:#eaf4ff; --ink:#15232d; --muted:#6b7b88; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f7fbff; color:var(--ink); }
+    header { max-width:1000px; margin:24px auto 0; padding:0 16px; }
+    header h1 { font-size: clamp(20px, 3vw, 28px); margin:0 0 4px; }
+    header p { margin:0 0 8px; color:var(--muted); }
+    #vis { max-width: 1000px; margin: 6px auto 20px; }
+    footer { max-width:1000px; margin:0 auto 28px; padding:0 16px; color:var(--muted); font-size:14px; }
+    a { color: inherit; }
   </style>
 </head>
 <body>
-  <div id="vis"></div>
+  <header>
+    <h1>Melbourne CBD — Proportional Symbol Map</h1>
+    <p>Circles sized and coloured by <strong>Metric (units)</strong>. Zoomed to metropolitan Melbourne for readability.</p>
+  </header>
+
+  <div id="vis" aria-label="Map of Melbourne with proportional circles representing Metric (units)"></div>
+
+  <footer>
+    <div>Projection: Mercator (regional, centered on Melbourne). Includes graticule and coastline reference layer.</div>
+    <div>Source: your dataset here • Basemap: Natural Earth 1:110m</div>
+  </footer>
+
   <script>
+    // ==== EASY KNOBS ====
+    const unitsLabel = "Metric (units)";   // ← change this once and legends/tooltips update
+    const dataUrl    = "combined_points_long_expanded.csv"; // or rename to points.csv and update here
+    // If your columns have different names, map them here (left = what your CSV uses)
+    const fieldMap = {
+      lon: ["lon","longitude","Lon","LONGITUDE","Lng","lng"],
+      lat: ["lat","latitude","Lat","LATITUDE"],
+      val: ["value","metric","count","Val","VAL"],
+      name:["name","Name","location","Location","place","Place"]
+    };
+
+    // Helper expression to coalesce multiple possible column names
+    const coalesceExpr = (cands) => cands.map(f => `datum['${f}']`).join(" || ");
+
     const spec = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
       width: 960, height: 560,
       background: "#e9f4ff",
-      title: { text: "Melbourne focus on transportation", anchor: "start" },
+      title: {
+        text: "Melbourne CBD — Proportional Symbols",
+        subtitle: unitsLabel,
+        anchor: "start", fontSize: 18, subtitleFontSize: 13
+      },
 
-      // 🔎 Zoom to Melbourne CBD area
-      projection: { type: "mercator", center: [144.9631, -37.8136], scale: 30000 },
+      // ✅ Appropriate regional projection; tuned to Melbourne to avoid excess whitespace
+      projection: { type: "mercator", center: [144.9631, -37.8136], scale: 31000 },
 
       layer: [
-        // Finer graticule for city scale
-        { data: { graticule: { step: [1, 1] } },
-          mark: { type: "geoshape", fill: null, stroke: "#c8d0d8" } },
+        // subtle graticule for context (city scale: 0.2°)
+        { data: { graticule: { step: [0.2, 0.2] } },
+          mark: { type: "geoshape", fill: null, stroke: "#c8d0d8", strokeWidth: 0.6 } },
 
-        // Basemap (world countries is fine; we are just zoomed into Melbourne)
+        // coastline / countries as a light reference layer
         { data: {
             url: "ne_110m_admin_0_countries.topojson",
             format: { type: "topojson", feature: "ne_110m_admin_0_countries" }
           },
-          mark: { type: "geoshape", fill: "#fafafa", stroke: "#bdbdbd" } },
+          mark: { type: "geoshape", fill: "#fafafa", stroke: "#bdbdbd", strokeWidth: 0.7 } },
 
-        // Your points
+        // your point data
         {
-          data: { url: "points.csv", format: { type: "csv" } },
+          data: { url: dataUrl, format: { type: "csv" } },
           transform: [
-            {"calculate": "toNumber(datum.lon)", "as": "lonN"},
-            {"calculate": "toNumber(datum.lat)", "as": "latN"},
-            {"calculate": "toNumber(datum.value)", "as": "valN"},
+            { calculate: `toNumber(${coalesceExpr(fieldMap.lon)})`, as: "lonN" },
+            { calculate: `toNumber(${coalesceExpr(fieldMap.lat)})`, as: "latN" },
+            { calculate: `toNumber(${coalesceExpr(fieldMap.val)})`, as: "valN" },
+            { calculate: `${coalesceExpr(fieldMap.name)} ? ${coalesceExpr(fieldMap.name)} : 'Location'`, as: "label" },
 
-            // OPTIONAL: keep only points near Melbourne (rough bbox)
-            { "filter": "datum.lonN >= 144.5 && datum.lonN <= 145.5 && datum.latN >= -38.3 && datum.latN <= -37.5" }
+            // keep only Metro Melbourne to prevent empty margins
+            { filter: "datum.lonN >= 144.5 && datum.lonN <= 145.5 && datum.latN >= -38.3 && datum.latN <= -37.5" }
           ],
-          mark: { type: "circle", opacity: 0.9 },
+          mark: { type: "circle", opacity: 0.85, stroke: "white", strokeWidth: 0.9 },
           encoding: {
             longitude: { field: "lonN", type: "quantitative" },
             latitude:  { field: "latN", type: "quantitative" },
-            color:     { field: "valN", type: "quantitative", title: "Value" },
-            size:      { field: "valN", type: "quantitative", scale: { range: [20, 300] } },
-            tooltip:   [{ field: "name", title: "Place" }, { field: "valN", title: "Value" }]
+
+            // ✅ Sequential colour for quantitative data
+            color: {
+              field: "valN", type: "quantitative",
+              scale: { scheme: "blues" },
+              legend: { title: unitsLabel }
+            },
+
+            // ✅ Square-root scaling for perceptual fairness; narrower range to reduce overlap
+            size: {
+              field: "valN", type: "quantitative",
+              scale: { type: "sqrt", range: [20, 260] },
+              legend: { title: unitsLabel }
+            },
+
+            // draw order: small on top for readability
+            order: { field: "valN", sort: "descending" },
+
+            tooltip: [
+              { field: "label", title: "Place" },
+              { field: "valN", title: unitsLabel, format: "~s" },
+              { field: "latN", title: "Lat", format: ".4f" },
+              { field: "lonN", title: "Lon", format: ".4f" }
+            ]
           }
         }
       ],
 
-      config: { view: { stroke: null }, legend: { titleFontSize: 12, labelFontSize: 11 } }
+      config: {
+        view: { stroke: null },
+        legend: { titleFontSize: 12, labelFontSize: 11, orient: "right", gradientLength: 120 },
+        axis: { grid: false }
+      }
     };
 
     vegaEmbed("#vis", spec, { actions: false });
