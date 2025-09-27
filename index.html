@@ -9,11 +9,10 @@
   <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
   <style>
     body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f7fbff; color:#15232d; }
-    header { max-width:1100px; margin:24px auto 6px; padding:0 16px; }
+    header { max-width:1000px; margin:24px auto 6px; padding:0 16px; }
     header h1 { margin:0 0 4px; font-size: clamp(20px, 3vw, 28px); }
     header p { margin:0; color:#6b7b88; }
-    /* IMPORTANT: allow enough width for the legend (or it will be clipped) */
-    #vis { width: min(100%, 1100px); margin:8px auto 20px; padding:0 16px; overflow: visible; }
+    #vis { max-width:1000px; margin:8px auto 20px; }
   </style>
 </head>
 <body>
@@ -25,7 +24,11 @@
   <div id="vis" aria-label="Map of Melbourne with heatmap and proportional circles"></div>
 
   <script>
-    const unitsLabel = "Metric (units)";
+    // === knobs ===
+    const metricName = "Metric";   // e.g., "Average daily riders"
+    const unit       = "units";    // e.g., "people/day"
+    const unitsLabel = `${metricName} (${unit})`;
+
     const dataUrl    = "combined_points_long_expanded.csv";
     const lonField   = "lon";
     const latField   = "lat";
@@ -33,13 +36,9 @@
 
     const spec = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
-
-      /* Make the view resize to the container and keep room for legends */
-      width: "container",
-      height: 560,
-      autosize: { type: "fit-x", contains: "padding" },
-
+      width: 960, height: 560,
       background: "#ffffff",
+      bounds: "flush",
       title: { text: "Melbourne CBD — Proportional Symbols + Heatmap", anchor: "start", fontSize: 18 },
 
       projection: { type: "mercator", center: [144.9631, -37.8136], scale: 31000 },
@@ -54,7 +53,7 @@
         { data: { graticule: { step: [0.2, 0.2] } },
           mark: { type: "geoshape", fill: null, stroke: "#c8d0d8", strokeWidth: 0.6 } },
 
-        /* HEATMAP */
+        // HEATMAP (2D binned lon/lat → sum of metric)
         {
           data: { url: dataUrl, format: { type: "csv" } },
           transform: [
@@ -78,13 +77,20 @@
             color: {
               field: "heat", type: "quantitative",
               scale: { scheme: "oranges", nice: true, domainMin: 0 },
-              legend: { title: `Heat (sum of ${unitsLabel})`, orient: "right", gradientLength: 140, direction: "vertical" }
+              legend: {
+                title: `Heat (sum of ${unitsLabel})`,
+                orient: "right",
+                gradientLength: 140,
+                direction: "vertical",
+                // append unit to every tick label on the gradient
+                labelExpr: "datum.label + ' ' + '" + unit + "'"
+              }
             },
-            tooltip: [{ field: "heat", title: `Sum ${unitsLabel}`, format: "~s" }]
+            tooltip: [{ field: "heat", type: "quantitative", title: `Sum ${unitsLabel}`, format: "~s" }]
           }
         },
 
-        /* POINTS */
+        // POINTS — proportional symbols (size legend with unit suffix)
         {
           data: { url: dataUrl, format: { type: "csv" } },
           transform: [
@@ -103,9 +109,15 @@
               field: "valN", type: "quantitative",
               scale: { type: "sqrt", range: [20, 260] },
               legend: {
-                title: unitsLabel, orient: "right", direction: "vertical",
-                symbolType: "circle", symbolFillColor: "#ffffff",
-                symbolStrokeColor: "#2f6fab", symbolStrokeWidth: 1.2
+                title: unitsLabel,
+                orient: "right",
+                direction: "vertical",
+                symbolType: "circle",
+                symbolFillColor: "#ffffff",
+                symbolStrokeColor: "#2f6fab",
+                symbolStrokeWidth: 1.2,
+                // append unit to each tick in the size legend
+                labelExpr: "datum.label + ' ' + '" + unit + "'"
               }
             },
             order: { field: "valN", sort: "descending" },
