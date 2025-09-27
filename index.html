@@ -34,25 +34,23 @@
     const spec = {
       $schema: "https://vega.github.io/schema/vega-lite/v5.json",
       width: 960, height: 560,
-      background: "#ffffff",                 // water is light (ocean layer below)
+      background: "#ffffff",
       bounds: "flush",
       title: { text: "Melbourne CBD — Proportional Symbols + Heatmap", anchor: "start", fontSize: 18 },
 
-      // ✅ appropriate regional projection, zoomed to Melbourne
+      // Regional projection, zoomed to Melbourne
       projection: { type: "mercator", center: [144.9631, -37.8136], scale: 31000 },
 
       layer: [
-        // ocean background (subtle), then blue land
+        // ocean background then blue land
         { data: { sphere: true }, mark: { type: "geoshape", fill: "#eaf4ff" }},
-
-        // blue land (Australia)
         { data: {
             url: "ne_110m_admin_0_countries.topojson",
             format: { type: "topojson", feature: "ne_110m_admin_0_countries" }
           },
           mark: { type: "geoshape", fill: "#cfe3ff", stroke: "#9dc4f4", strokeWidth: 0.8 } },
 
-        // light graticule for reference
+        // subtle graticule
         { data: { graticule: { step: [0.2, 0.2] } },
           mark: { type: "geoshape", fill: null, stroke: "#c8d0d8", strokeWidth: 0.6 } },
 
@@ -63,19 +61,16 @@
             { calculate: `toNumber(datum['${lonField}'])`, as: "lonN" },
             { calculate: `toNumber(datum['${latField}'])`, as: "latN" },
             { calculate: `toNumber(datum['${valueField}'])`, as: "valN" },
-            // keep valid rows and stay within metro Melbourne bbox
-            { filter: "isValid(datum.lonN) && isValid(datum.latN) && isValid(datum.valN)" },
+            { filter: "isFinite(datum.lonN) && isFinite(datum.latN) && isFinite(datum.valN)" },
             { filter: "datum.lonN >= 144.5 && datum.lonN <= 145.5 && datum.latN >= -38.3 && datum.latN <= -37.5" },
-
-            // 2D binning + aggregation
             { bin: { maxbins: 60 }, field: "lonN", as: ["lonBin", "lonBin_end"] },
             { bin: { maxbins: 60 }, field: "latN", as: ["latBin", "latBin_end"] },
             { aggregate: [{ op: "sum", field: "valN", as: "heat" }],
-              groupby: ["lonBin","lonBin_end","latBin","latBin_end"] }
+              groupby: ["lonBin","lonBin_end","latBin","latBin_end"] },
+            { filter: "isFinite(datum.heat)" }
           ],
           mark: { type: "rect", opacity: 0.5 },
           encoding: {
-            // note: these are geographic degrees laid directly on the map extent
             x:  { field: "lonBin",     type: "quantitative", axis: null },
             x2: { field: "lonBin_end" },
             y:  { field: "latBin",     type: "quantitative", axis: null },
@@ -83,13 +78,18 @@
             color: {
               field: "heat", type: "quantitative",
               scale: { scheme: "oranges", nice: true, domainMin: 0 },
-              title: `Heat (sum of ${unitsLabel})`
+              legend: {
+                title: `Heat (sum of ${unitsLabel})`,
+                orient: "right",
+                gradientLength: 140,
+                direction: "vertical"
+              }
             },
             tooltip: [{ field: "heat", type: "quantitative", title: `Sum ${unitsLabel}`, format: "~s" }]
           }
         },
 
-        // POINTS — proportional symbols (size encodes metric; clear legend)
+        // POINTS — proportional symbols (size legend explicitly styled)
         {
           data: { url: dataUrl, format: { type: "csv" } },
           transform: [
@@ -97,7 +97,7 @@
             { calculate: `toNumber(datum['${latField}'])`, as: "latN" },
             { calculate: `toNumber(datum['${valueField}'])`, as: "valN" },
             { calculate: "datum.name ? datum.name : 'Location'", as: "label" },
-            { filter: "isValid(datum.lonN) && isValid(datum.latN) && isValid(datum.valN)" },
+            { filter: "isFinite(datum.lonN) && isFinite(datum.latN) && isFinite(datum.valN)" },
             { filter: "datum.lonN >= 144.5 && datum.lonN <= 145.5 && datum.latN >= -38.3 && datum.latN <= -37.5" }
           ],
           mark: { type: "circle", opacity: 0.9, fill: "#ffffff", stroke: "#2f6fab", strokeWidth: 1.2 },
@@ -107,7 +107,15 @@
             size: {
               field: "valN", type: "quantitative",
               scale: { type: "sqrt", range: [20, 260] },
-              legend: { title: unitsLabel }
+              legend: {
+                title: unitsLabel,
+                orient: "right",
+                direction: "vertical",
+                symbolType: "circle",
+                symbolFillColor: "#ffffff",
+                symbolStrokeColor: "#2f6fab",
+                symbolStrokeWidth: 1.2
+              }
             },
             order: { field: "valN", sort: "descending" },
             tooltip: [
@@ -120,12 +128,17 @@
         }
       ],
 
-      // separate color scales for heat vs. circles (circles use size only)
+      // keep scales separate: heat uses color; points use size
       resolve: { scale: { color: "independent" } },
 
       config: {
         view: { stroke: null, clip: true },
-        legend: { titleFontSize: 12, labelFontSize: 11, orient: "right", gradientLength: 120 },
+        legend: {
+          titleFontSize: 12,
+          labelFontSize: 11,
+          orient: "right",
+          labelLimit: 140
+        },
         axis: { grid: false }
       }
     };
