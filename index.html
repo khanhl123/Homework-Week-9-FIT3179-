@@ -24,14 +24,14 @@
   <div id="vis" aria-label="Map of Melbourne with heatmap and proportional circles"></div>
 
   <script>
-    // ===== quick knobs =====
+    // === quick knobs (edit if your CSV has different names) ===
     const unitsLabel = "Metric (units)";
     const dataUrl    = "combined_points_long_expanded.csv";
     const lonField   = "lon";
     const latField   = "lat";
     const valueField = "value";
 
-    // tighter bbox around metro Melbourne (keeps outliers but removes wasted space)
+    // tight bbox around metro Melbourne
     const bbox = { lonMin: 144.75, lonMax: 145.25, latMin: -38.05, latMax: -37.60 };
 
     const spec = {
@@ -41,14 +41,14 @@
       bounds: "flush",
       title: { text: "Melbourne CBD — Proportional Symbols + Heatmap", anchor: "start", fontSize: 18 },
 
-      // ✅ appropriate regional projection focused on Melbourne, less whitespace
+      // ✅ Appropriate regional projection, centered & scaled to reduce whitespace
       projection: { type: "mercator", center: [145.0, -37.85], scale: 42000 },
 
       layer: [
         // Ocean background
-        { data: { sphere: true }, mark: { type: "geoshape", fill: "#eaf4ff" } },
+        { data: { sphere: true }, mark: { type: "geoshape", fill: "#eaf4ff" }},
 
-        // Blue land from world-atlas (CDN) — reliable link
+        // Blue land (coastline) — switch to world-atlas CDN for reliability
         { data: {
             url: "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json",
             format: { type: "topojson", feature: "countries" }
@@ -59,20 +59,24 @@
         { data: { graticule: { step: [0.2, 0.2] } },
           mark: { type: "geoshape", fill: null, stroke: "#cdd7e3", strokeWidth: 0.6 } },
 
-        // HEATMAP (2D binned lon/lat -> sum of metric)
+        // === HEATMAP (2D binned lon/lat → sum of metric) ===
         {
           data: { url: dataUrl, format: { type: "csv" } },
           transform: [
             { calculate: `toNumber(datum['${lonField}'])`, as: "lonN" },
             { calculate: `toNumber(datum['${latField}'])`, as: "latN" },
             { calculate: `toNumber(datum['${valueField}'])`, as: "valN" },
-            { filter: "isValid(datum.lonN) && isValid(datum.latN) && isValid(datum.valN)" },
+            { filter: "isFinite(datum.lonN) && isFinite(datum.latN) && isFinite(datum.valN)" },
             { filter: `datum.lonN >= ${bbox.lonMin} && datum.lonN <= ${bbox.lonMax} && datum.latN >= ${bbox.latMin} && datum.latN <= ${bbox.latMax}` },
-            // 2D binning + aggregation
+
+            // 2D binning + aggregation to 'heat'
             { bin: { maxbins: 70 }, field: "lonN", as: ["lonBin", "lonBin_end"] },
             { bin: { maxbins: 70 }, field: "latN", as: ["latBin", "latBin_end"] },
             { aggregate: [{ op: "sum", field: "valN", as: "heat" }],
-              groupby: ["lonBin","lonBin_end","latBin","latBin_end"] }
+              groupby: ["lonBin","lonBin_end","latBin","latBin_end"] },
+
+            // guard against weirdness (ensures no NaN in legend)
+            { filter: "isFinite(datum.heat)" }
           ],
           mark: { type: "rect", opacity: 0.35 },
           encoding: {
@@ -85,11 +89,11 @@
               scale: { scheme: "oranges", nice: true, domainMin: 0 },
               title: `Heat (sum of ${unitsLabel})`
             },
-            tooltip: [{ field: "heat", type: "quantitative", title: `Sum ${unitsLabel}`, format: "~s" }]
+            tooltip: [{ field: "heat", title: `Sum ${unitsLabel}`, format: "~s" }]
           }
         },
 
-        // POINTS — proportional symbols
+        // === POINTS — proportional symbols (size encodes metric) ===
         {
           data: { url: dataUrl, format: { type: "csv" } },
           transform: [
@@ -97,7 +101,7 @@
             { calculate: `toNumber(datum['${latField}'])`, as: "latN" },
             { calculate: `toNumber(datum['${valueField}'])`, as: "valN" },
             { calculate: "datum.name ? datum.name : 'Location'", as: "label" },
-            { filter: "isValid(datum.lonN) && isValid(datum.latN) && isValid(datum.valN)" },
+            { filter: "isFinite(datum.lonN) && isFinite(datum.latN) && isFinite(datum.valN)" },
             { filter: `datum.lonN >= ${bbox.lonMin} && datum.lonN <= ${bbox.lonMax} && datum.latN >= ${bbox.latMin} && datum.latN <= ${bbox.latMax}` }
           ],
           mark: { type: "circle", opacity: 0.9, fill: "#ffffff", stroke: "#2f6fab", strokeWidth: 1.2 },
@@ -120,12 +124,12 @@
         }
       ],
 
-      // separate color scales for heat vs circles (circles use size only)
+      // Heatmap uses color; points use size → keep scales independent
       resolve: { scale: { color: "independent" } },
 
       config: {
         view: { stroke: null, clip: true },
-        legend: { titleFontSize: 12, labelFontSize: 11, orient: "right", gradientLength: 120 },
+        legend: { titleFontSize: 12, labelFontSize: 11, orient: "right", gradientLength: 120, labelLimit: 140 },
         axis: { grid: false }
       }
     };
