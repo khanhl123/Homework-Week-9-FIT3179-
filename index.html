@@ -1,122 +1,165 @@
-<script>
-  const metricName = "Mode share";
-  const unit = "%";
-  const unitsLabel = `${metricName} (${unit})`;
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Melbourne CBD — Proportional Symbols + Heatmap</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Vega libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+  <style>
+    body { margin:0; font-family: system-ui, Arial, sans-serif; background:#f7fbff; color:#15232d; }
+    header { max-width:1100px; margin:24px auto 6px; padding:0 16px; }
+    header h1 { margin:0 0 4px; font-size: clamp(20px, 3vw, 28px); }
+    header p { margin:0; color:#6b7b88; }
+    /* Give the chart enough room so legends are not clipped */
+    #vis { width: min(100%, 1100px); margin:8px auto 20px; padding:0 16px; overflow: visible; }
+    #err { max-width:1100px; margin:12px auto; padding:8px 12px; color:#b00020; background:#fff3f3; border:1px solid #f1c2c6; display:none; white-space:pre-wrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Melbourne CBD — Proportional Symbols + Heatmap</h1>
+    <p>Heatmap shows summed <strong>Mode share (%)</strong>; circle size shows the same metric per location.</p>
+  </header>
 
-  const dataUrl    = "combined_points_long_expanded.csv"; 
-  const lonField   = "lon";
-  const latField   = "lat";
-  const valueField = "value";
-  const metricField= "metric";
+  <div id="vis" aria-label="Map of Melbourne with heatmap and proportional circles"></div>
+  <div id="err"></div>
 
-  const spec = {
-    $schema: "https://vega.github.io/schema/vega-lite/v5.json",
-    width: 960, height: 560,
-    background: "#ffffff",
-    title: { text: "Melbourne CBD — Proportional Symbols + Heatmap", subtitle: unitsLabel, anchor: "start" },
+  <script>
+    // ----------------- knobs -----------------
+    const metricName = "Mode share";
+    const unit = "%";
+    const unitsLabel = `${metricName} (${unit})`;
+    const dataUrl    = "combined_points_long_expanded.csv";    // your CSV in the same folder
+    const lonField   = "lon";
+    const latField   = "lat";
+    const valueField = "value";
+    const metricField= "metric";
+    // ----------------------------------------
 
-    // a UI control to pick the mode
-    params: [{
-      name: "modeSel",
-      value: "Public transport",
-      bind: { input: "select", options: ["Public transport","Car","Active"], name: "Mode: " }
-    }],
+    const spec = {
+      $schema: "https://vega.github.io/schema/vega-lite/v5.json",
+      width: "container",
+      height: 560,
+      autosize: { type: "fit-x", contains: "padding" },
+      background: "#ffffff",
+      title: { text: "Melbourne CBD — Proportional Symbols + Heatmap", subtitle: unitsLabel, anchor: "start" },
 
-    projection: { type: "mercator", center: [144.9631, -37.8136], scale: 31000 },
+      // UI control to choose mode
+      params: [{
+        name: "modeSel",
+        value: "Public transport",
+        bind: { input: "select", options: ["Public transport","Car","Active"], name: "Mode: " }
+      }],
 
-    layer: [
-      { data: { sphere: true }, mark: { type: "geoshape", fill: "#eaf4ff" }},
-      { data: {
-          url: "ne_110m_admin_0_countries.topojson",
-          format: { type: "topojson", feature: "ne_110m_admin_0_countries" }
+      projection: { type: "mercator", center: [144.9631, -37.8136], scale: 31000 },
+
+      layer: [
+        // Ocean + land + graticule
+        { data: { sphere: true }, mark: { type: "geoshape", fill: "#eaf4ff" }},
+        { data: {
+            url: "ne_110m_admin_0_countries.topojson",
+            format: { type: "topojson", feature: "ne_110m_admin_0_countries" }
+          },
+          mark: { type: "geoshape", fill: "#cfe3ff", stroke: "#9dc4f4", strokeWidth: 0.8 } },
+        { data: { graticule: { step: [0.2, 0.2] } },
+          mark: { type: "geoshape", fill: null, stroke: "#c8d0d8", strokeWidth: 0.6 } },
+
+        // HEATMAP (2D binned lon/lat → sum of selected mode values)
+        {
+          data: { url: dataUrl, format: { type: "csv" } },
+          transform: [
+            { filter: `datum['${metricField}'] == modeSel` },
+            { calculate: `toNumber(datum['${lonField}'])`, as: "lonN" },
+            { calculate: `toNumber(datum['${latField}'])`, as: "latN" },
+            { calculate: `toNumber(datum['${valueField}'])`, as: "valN" },
+            { filter: "isFinite(datum.lonN) && isFinite(datum.latN) && isFinite(datum.valN)" },
+            // Melbourne bbox to avoid whitespace/non-local rows
+            { filter: "datum.lonN >= 144.5 && datum.lonN <= 145.5 && datum.latN >= -38.3 && datum.latN <= -37.5" },
+            { bin: { maxbins: 60 }, field: "lonN", as: ["lonBin", "lonBin_end"] },
+            { bin: { maxbins: 60 }, field: "latN", as: ["latBin", "latBin_end"] },
+            { aggregate: [{ op: "sum", field: "valN", as: "heat" }],
+              groupby: ["lonBin","lonBin_end","latBin","latBin_end"] },
+            { filter: "isFinite(datum.heat)" }
+          ],
+          mark: { type: "rect", opacity: 0.45 },
+          encoding: {
+            x:  { field: "lonBin", type: "quantitative", axis: null },
+            x2: { field: "lonBin_end" },
+            y:  { field: "latBin", type: "quantitative", axis: null },
+            y2: { field: "latBin_end" },
+            color: {
+              field: "heat", type: "quantitative",
+              scale: { scheme: "oranges", nice: true, domainMin: 0 },
+              legend: {
+                title: `Heat (sum of ${unitsLabel})`,
+                orient: "right",
+                gradientLength: 140,
+                // safest way to append unit on every tick
+                labelExpr: "datum.label + ' %'"
+              }
+            },
+            tooltip: [{ field: "heat", title: `Sum ${unitsLabel}`, format: ".1f" }]
+          }
         },
-        mark: { type: "geoshape", fill: "#cfe3ff", stroke: "#9dc4f4", strokeWidth: 0.8 } },
-      { data: { graticule: { step: [0.2, 0.2] } },
-        mark: { type: "geoshape", fill: null, stroke: "#c8d0d8", strokeWidth: 0.6 } },
 
-      // HEATMAP for the selected mode
-      {
-        data: { url: dataUrl, format: { type: "csv" } },
-        transform: [
-          { filter: `datum['${metricField}'] == modeSel` },
-          { calculate: `toNumber(datum['${lonField}'])`, as: "lonN" },
-          { calculate: `toNumber(datum['${latField}'])`, as: "latN" },
-          { calculate: `toNumber(datum['${valueField}'])`, as: "valN" },
-          { filter: "isFinite(datum.lonN) && isFinite(datum.latN) && isFinite(datum.valN)" },
-          { filter: "datum.lonN >= 144.5 && datum.lonN <= 145.5 && datum.latN >= -38.3 && datum.latN <= -37.5" },
-          { bin: { maxbins: 60 }, field: "lonN", as: ["lonBin", "lonBin_end"] },
-          { bin: { maxbins: 60 }, field: "latN", as: ["latBin", "latBin_end"] },
-          { aggregate: [{ op: "sum", field: "valN", as: "heat" }],
-            groupby: ["lonBin","lonBin_end","latBin","latBin_end"] },
-          { filter: "isFinite(datum.heat)" }
-        ],
-        mark: { type: "rect", opacity: 0.5 },
-        encoding: {
-          x:  { field: "lonBin", type: "quantitative", axis: null },
-          x2: { field: "lonBin_end" },
-          y:  { field: "latBin", type: "quantitative", axis: null },
-          y2: { field: "latBin_end" },
-          color: {
-            field: "heat", type: "quantitative",
-            scale: { scheme: "oranges", nice: true, domainMin: 0 },
-            legend: {
-              title: `Heat (sum of ${unitsLabel})`,
-              orient: "right",
-              gradientLength: 140,
-              labelExpr: `format(datum.value, '~s') + ' ${unit}'`
-            }
-          },
-          tooltip: [{ field: "heat", title: `Sum ${unitsLabel}`, format: ".1f" }]
+        // POINTS (proportional circles for selected mode)
+        {
+          data: { url: dataUrl, format: { type: "csv" } },
+          transform: [
+            { filter: `datum['${metricField}'] == modeSel` },
+            { calculate: `toNumber(datum['${lonField}'])`, as: "lonN" },
+            { calculate: `toNumber(datum['${latField}'])`, as: "latN" },
+            { calculate: `toNumber(datum['${valueField}'])`, as: "valN" },
+            { calculate: "datum.name ? datum.name : 'Location'", as: "label" },
+            { filter: "isFinite(datum.lonN) && isFinite(datum.latN) && isFinite(datum.valN)" },
+            { filter: "datum.lonN >= 144.5 && datum.lonN <= 145.5 && datum.latN >= -38.3 && datum.latN <= -37.5" }
+          ],
+          mark: { type: "circle", opacity: 0.9, fill: "#ffffff", stroke: "#2f6fab", strokeWidth: 1.2 },
+          encoding: {
+            longitude: { field: "lonN", type: "quantitative" },
+            latitude:  { field: "latN", type: "quantitative" },
+            size: {
+              field: "valN", type: "quantitative",
+              scale: { type: "sqrt", range: [20, 260] },
+              legend: {
+                title: unitsLabel,
+                orient: "right",
+                symbolType: "circle",
+                symbolFillColor: "#ffffff",
+                symbolStrokeColor: "#2f6fab",
+                symbolStrokeWidth: 1.2,
+                labelExpr: "datum.label + ' %'"
+              }
+            },
+            order: { field: "valN", sort: "descending" },
+            tooltip: [
+              { field: "label", title: "Place" },
+              { field: "valN", title: unitsLabel, format: ".1f" },
+              { field: "latN", title: "Lat", format: ".4f" },
+              { field: "lonN", title: "Lon", format: ".4f" }
+            ]
+          }
         }
-      },
+      ],
 
-      // POINTS for the selected mode
-      {
-        data: { url: dataUrl, format: { type: "csv" } },
-        transform: [
-          { filter: `datum['${metricField}'] == modeSel` },
-          { calculate: `toNumber(datum['${lonField}'])`, as: "lonN" },
-          { calculate: `toNumber(datum['${latField}'])`, as: "latN" },
-          { calculate: `toNumber(datum['${valueField}'])`, as: "valN" },
-          { calculate: "datum.name ? datum.name : 'Location'", as: "label" },
-          { filter: "isFinite(datum.lonN) && isFinite(datum.latN) && isFinite(datum.valN)" },
-          { filter: "datum.lonN >= 144.5 && datum.lonN <= 145.5 && datum.latN >= -38.3 && datum.latN <= -37.5" }
-        ],
-        mark: { type: "circle", opacity: 0.9, fill: "#ffffff", stroke: "#2f6fab", strokeWidth: 1.2 },
-        encoding: {
-          longitude: { field: "lonN", type: "quantitative" },
-          latitude:  { field: "latN", type: "quantitative" },
-          size: {
-            field: "valN", type: "quantitative",
-            scale: { type: "sqrt", range: [20, 260] },
-            legend: {
-              title: unitsLabel,
-              orient: "right",
-              symbolType: "circle",
-              symbolFillColor: "#ffffff",
-              symbolStrokeColor: "#2f6fab",
-              symbolStrokeWidth: 1.2,
-              labelExpr: `format(datum.value, '~s') + ' ${unit}'`
-            }
-          },
-          order: { field: "valN", sort: "descending" },
-          tooltip: [
-            { field: "label", title: "Place" },
-            { field: "valN", title: unitsLabel, format: ".1f" },
-            { field: "latN", title: "Lat", format: ".4f" },
-            { field: "lonN", title: "Lon", format: ".4f" }
-          ]
-        }
+      // color used by heatmap only; points use size
+      resolve: { scale: { color: "independent" } },
+      config: {
+        view: { stroke: null, clip: true },
+        legend: { titleFontSize: 12, labelFontSize: 11, orient: "right", labelLimit: 160 },
+        axis: { grid: false }
       }
-    ],
+    };
 
-    resolve: { scale: { color: "independent" } },
-    config: {
-      view: { stroke: null, clip: true },
-      legend: { titleFontSize: 12, labelFontSize: 11, orient: "right", labelLimit: 160 },
-      axis: { grid: false }
-    }
-  };
-
-  vegaEmbed("#vis", spec, { actions: false });
-</script>
+    vegaEmbed("#vis", spec, { actions: false }).catch(err => {
+      const el = document.getElementById('err');
+      el.style.display = 'block';
+      el.textContent = 'Error rendering chart:\\n' + err.message;
+      console.error(err);
+    });
+  </script>
+</body>
+</html>
